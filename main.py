@@ -102,13 +102,13 @@ def main():
             d = np.array([shuffled_data[2, j], 1 - shuffled_data[2,j]])
             
             #### Forward Propigation ####
-            z = np.dot(weight_1.T, x)
+            z = np.dot(weight_1.T, x[:,j])
             zeros = np.zeros(z.shape)            
             ## Hidden layer ##
-            h = np.maximum(zeros, z)
+            h = np.maximum(0, z)
             h = np.append(h,1)
             
-            y = np.dot(weight_2,h)
+            y = np.dot(weight_2, h)
 
             ## SoftMax of output ##
             exp_y = np.exp(y - np.max(y))
@@ -116,17 +116,17 @@ def main():
 
             outguess[:,j] = np.array([shuffled_data_location[0, j], shuffled_data_location[1, j], y_soft[0]])
             ## Cross Entropy loss ## 
-            L = -np.sum(d * np.log(y_soft + 1e-10))
+            L = -np.sum(d[:,j] * np.log(y_soft + 1e-10))
             total_L += L
 
             ##############################            
             #### Bacskword Propigation ####
 
-            output_error = y_soft - d
+            output_error = y_soft - d[:,j]
             weight_2_updates = np.outer(output_error, h)
             
             hidden_error = np.dot(weight_2.T, output_error) * (h > 0)
-            weight_1_updates = np.outer(hidden_error[:-1], x)
+            weight_1_updates = np.outer(hidden_error[:-1], x[:,j])
 
             weight_1 = weight_1 - learning_rate * weight_1_updates
             weight_2 = weight_2 - learning_rate * weight_2_updates
@@ -168,7 +168,7 @@ def main():
             plt.grid()
 
             plt.show()
-            
+
             
 #        MSE[i] = L/iterations #np.sum(error**2) / iterations
 
