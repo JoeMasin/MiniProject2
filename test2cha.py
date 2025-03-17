@@ -62,14 +62,17 @@ def main():
     W1 = np.random.randn(hidden_size, input_size)  # Weights for input to hidden layer
     W2 = np.random.randn(output_size, hidden_size)  # Weights for hidden to output layer
 
-    # Example input (2 features + 1 bias)
-    x = test()  # Last term is the bias
-    std = np.std(x, axis=0)
-    mean = np.mean(x, axis=0)
-    std[std == 0] = 1
-    data_norm = (x - mean) / std
     
-    data_norm[2,:] = x[2,:]
+    
+    
+    # Example input (2 features + 1 bias)
+    data = test()  # Last term is the bias
+    std = np.std(data, axis=0)
+    mean = np.mean(data, axis=0)
+    std[std == 0] = 1
+    data_norm = (data - mean) / std
+    
+    data_norm[2,:] = data[2,:]
 
     x = data_norm
     y_true = np.array([data_norm[2,:], 1-data_norm[2,:]])  # One-hot encoded true label
@@ -77,7 +80,30 @@ def main():
     # Hyperparameters
     learning_rate = 0.01
     epochs = 1000
-    i = 2
+    
+    plt.figure()
+    for ii in range(0, 500):
+        # Forward pass
+            # Input to hidden layer
+        z = np.dot(W1, x[:,ii])
+        a = relu(z)
+
+            # Hidden layer to output layer
+        h = np.dot(W2, a)
+        y = softmax(h)
+            
+        if y[0] >= 0.5:
+            plt.scatter(data[0,ii], data[1,ii], c='b', linewidths=2, marker=9)
+        elif y[0] < 0.5:
+            plt.scatter(data[0,ii], data[1,ii], c='r', linewidths=2, marker=9)
+
+    plt.title('Final Guess for Weights')
+    plt.xlabel('x1')
+    plt.ylabel('x2')
+    plt.grid()
+
+    plt.show()
+
     # Training loop
     for epoch in range(epochs):
         for i in range(0, 500):
@@ -122,4 +148,39 @@ def main():
     print("Input: ",x[:,i])
     print(y_true[:,i])
 
+
+    plt.figure()
+    for ii in range(0, 500):
+        # Forward pass
+            # Input to hidden layer
+        z = np.dot(W1, x[:,ii])
+        a = relu(z)
+
+            # Hidden layer to output layer
+        h = np.dot(W2, a)
+        y = softmax(h)
+            
+        if y[0] >= 0.5:
+            plt.scatter(data[0,ii], data[1,ii], c='b', linewidths=2, marker=9)
+        elif y[0] < 0.5:
+            plt.scatter(data[0,ii], data[1,ii], c='r', linewidths=2, marker=9)
+
+    plt.title('Final Guess for Weights')
+    plt.xlabel('x1')
+    plt.ylabel('x2')
+    plt.grid()
+
+    plt.show()
+
+
 main()
+
+
+
+
+
+
+
+
+
+

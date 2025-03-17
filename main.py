@@ -169,6 +169,7 @@ def main():
 
             plt.show()
             
+            
 #        MSE[i] = L/iterations #np.sum(error**2) / iterations
 
     ### plot MSE ###
