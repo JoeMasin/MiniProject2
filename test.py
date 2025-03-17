@@ -10,6 +10,8 @@ from tkinter import Image, filedialog
 import cv2 as cv
 import pandas as pd
 
+
+
 def printin(input):
     row,col = input.shape[:2]
     plt.figure()
@@ -24,6 +26,18 @@ def printin(input):
     plt.ylabel('x')
     plt.grid()
     plt.show()
+
+
+def activation(into):
+    ## switch to RELU
+    out = np.tanh(into) #(np.exp(into) - np.exp(-into)) / (np.exp(into) + np.exp(-into))
+    return out
+
+
+def derivative(into):
+
+    out = 1 - np.square(into)
+    return out
 
 
 def test():
@@ -52,8 +66,8 @@ def test():
 
 def main():
     #### Basic 3 neuron Nural Net with 1 hidden layer ####
-    ### define peramiters ### 
-    
+    ### define peramiters ###
+
     data = test()
     data_rows, data_cols = data.shape[:2]
 
@@ -63,31 +77,28 @@ def main():
     mean = np.mean(data, axis=0)
     std[std == 0] = 1
     data_norm = (data - mean) / std
-    
-    data_norm[2,:] = data[2,:]
-    ### define the number of train and test data being used ###    
-    max_data_size = max(data_rows, (data_cols-1))
-     
-    num_tr = (max(data_rows, (data_cols-1))) // 4
+
+    data_norm[2, :] = data[2, :]
+    ### define the number of train and test data being used ###
+    max_data_size = max(data_rows, (data_cols - 1))
+
+    num_tr = (max(data_rows, (data_cols - 1))) // 4
     num_test = max_data_size - (num_tr + 1)
 
-    weight_1_int = np.random.rand(3, 3)
-    weight_1 = weight_1_int + np.sqrt(2)/len(weight_1_int)
-    weight_1 = np.random.normal(weight_1)
- 
-    weight_2_int = np.random.rand(2, 4)
-    weight_2 = weight_2_int + np.sqrt(2)/len(weight_2_int)   
-    weight_2 = np.random.normal(weight_2)
+    # He initialization for ReLU
+    weight_1 = np.random.randn(3, 3) * np.sqrt(2.0 / 3)
+    weight_2 = np.random.randn(2, 4) * np.sqrt(2.0 / 4)
+    # weight_2 = np.random.normal(weight_2)
 
-    iterations = 100
-    #eta = 1 ### would be used if we were using epocs but we are not because we willuse all the data in 1 run of training and testing ###
-    learning_rate = 0.001
-    #J = np.zeros((500, 3))
-    #error = np.zeros(num_tr)
+    iterations = 500
+    # eta = 1 ### would be used if we were using epocs but we are not because we willuse all the data in 1 run of training and testing ###
+    learning_rate = 0.01
+    # J = np.zeros((500, 3))
+    # error = np.zeros(num_tr)
     err = np.zeros(iterations)
     MSE = np.zeros(iterations)
-    #loss = np.zeros(num_tr)
-    outguess = np.zeros((3,num_tr))
+    # loss = np.zeros(num_tr)
+    outguess = np.zeros((3, num_tr))
     total_L = 0
 
     ### Training ###
@@ -96,44 +107,36 @@ def main():
         shuffled_data = np.array(data_norm[:, shuffle_seq])
         shuffled_data_location = np.array(data[:, shuffle_seq])
         
+        total_loss = 0  # Track total loss for averaging
+        
         for j in range(0, num_tr):
-            
+            #### Forward Propagation ####
             x = np.array([shuffled_data[0, j], shuffled_data[1, j], 1])
-            d = np.array([shuffled_data[2, j], 1 - shuffled_data[2,j]])
+            d = np.array([shuffled_data[2, j], 1 - shuffled_data[2, j]])
             
-            #### Forward Propigation ####
             z = np.dot(weight_1.T, x)
-            zeros = np.zeros(z.shape)            
-            ## Hidden layer ##
-            h = np.maximum(zeros, z)
-            h = np.append(h,1)
+            h = np.maximum(0, z)  # ReLU activation
+            h = np.append(h, 1)  # Add bias term
             
-            y = np.dot(weight_2,h)
-
+            y = np.dot(weight_2, h)
+            
             ## SoftMax of output ##
-            exp_y = np.exp(y - np.max(y))
+            exp_y = np.exp(y - np.max(y))  # Numerical stability
             y_soft = exp_y / np.sum(exp_y)
-
-            outguess[:,j] = np.array([shuffled_data_location[0, j], shuffled_data_location[1, j], y_soft[0]])
+            
+            outguess[:, j] = np.array([shuffled_data_location[0, j], shuffled_data_location[1, j], y_soft[0]])
+            
             ## Cross Entropy loss ## 
-            L = -np.sum(d * np.log(y_soft + 1e-10))
-            total_L += L
-
-            ##############################            
-            #### Bacskword Propigation ####
-
+            L = -np.sum(d * np.log(y_soft + 1e-10))  # Add small epsilon to avoid log(0)
+            total_loss += L
+            
+            #### Backward Propagation ####
             output_error = y_soft - d
             weight_2_updates = np.outer(output_error, h)
             
             hidden_error = np.dot(weight_2.T, output_error) * (h > 0)
             weight_1_updates = np.outer(hidden_error[:-1], x)
 
-            weight_1 = weight_1 - learning_rate * weight_1_updates
-            weight_2 = weight_2 - learning_rate * weight_2_updates
-            
-            MSE[i] = total_L/num_tr
-            err[i] = L
-        
             # Print key variables for debugging
             if i % 100 == 0 and j == 0:
                 print(f"Iteration {i}, Sample {j}")
@@ -150,30 +153,38 @@ def main():
                 print("Loss:", L)
                 print()
 
+            # Update weights
+            weight_1 = weight_1 - learning_rate * weight_1_updates
+            weight_2 = weight_2 - learning_rate * weight_2_updates
+        
+        MSE[i] = total_loss / num_tr  # Average loss
 
-        if i % 10 == 0:
+        if i % 100 == 0:
+            print(f"Iteration {i}, Loss: {MSE[i]}")
+
+        if i % 100 == 0:
             plt.figure()
             for ii in range(1, num_tr):
                 x = [outguess[0, ii], outguess[1, ii]]
                 y = outguess[2, ii]
 
                 if y >= 0.5:
-                    plt.scatter(x[0], x[1], c='b', linewidths=2, marker=9)
+                    plt.scatter(x[0], x[1], c="r", linewidths=2, marker=9)
                 elif y < 0.5:
-                    plt.scatter(x[0], x[1], c='r', linewidths=2, marker=9)
+                    plt.scatter(x[0], x[1], c="b", linewidths=2, marker=9)
 
-            plt.title('Final Guess for Weights')
-            plt.xlabel('x1')
-            plt.ylabel('x2')
+            plt.title("Final Guess for Weights")
+            plt.xlabel("x1")
+            plt.ylabel("x2")
             plt.grid()
 
             plt.show()
-            
-#        MSE[i] = L/iterations #np.sum(error**2) / iterations
+
+    #        MSE[i] = L/iterations #np.sum(error**2) / iterations
 
     ### plot MSE ###
     plt.figure()
-    #plt.plot(MSE, color="red")
+    plt.plot(MSE, color="red")
     plt.plot(err, color="green")
     plt.title('Mean-Squared Error')
     plt.ylabel('Cost Function value')
@@ -239,5 +250,3 @@ def main():
 
 
 main()
-
-
