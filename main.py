@@ -10,23 +10,23 @@ from tkinter import Image, filedialog
 import cv2 as cv
 import pandas as pd
 
-def printin(input):
-    row,col = input.shape[:2]
+def plot_data(input_locations, input_classes):
+    row,col = input_locations.shape[:2]
     plt.figure()
     for i in range(0, row):
-        if input[i,2] == 1:
+        if input_classes[0,i] >= 0.5:
             plt.scatter(input[i,0], input[i,1], color='blue')
         else:
             plt.scatter(input[i,0], input[i,1], color='red')
 
-    plt.title('Ideal Sample')
-    plt.xlabel('y')
-    plt.ylabel('x')
+    plt.title('Data Classification')
+    plt.xlabel('x')
+    plt.ylabel('y')
     plt.grid()
     plt.show()
 
 
-def test():
+def date_reader():
 
     # initialize tkinter root window
     root = tk.Tk()
@@ -49,12 +49,41 @@ def test():
 
     return inputs
 
+def forwardprop(W1, W2, data, y_true):
+#### Forward Propigation ####
+    z = np.dot(W1, data)
+                
+    ## Hidden layer ##
+    h = np.maximum(0, z)
+    h = np.append(h,1)
+        
+    y = np.dot(W2, h)
+    
+    ## SoftMax of output ##
+    exp_y = np.exp(y - np.max(y))
+    y_soft = exp_y / np.sum(exp_y)
+    
+    return y_soft, h
+
+def backprop(W1, W2, data, y_true, learning_rate, y_soft):
+    #### Bacskword Propigation ####
+
+    output_error = y_soft - y_true[:,j]
+    weight_2_updates = np.outer(output_error, h)
+        
+    hidden_error = np.dot(weight_2.T, output_error) * (h > 0)
+    weight_1_updates = np.outer(hidden_error[:-1], x[:,j])
+
+    weight_1 = weight_1 - learning_rate * weight_1_updates
+    weight_2 = weight_2 - learning_rate * weight_2_updates
+
+    return weight_1, weight_2
 
 def main():
     #### Basic 3 neuron Nural Net with 1 hidden layer ####
     ### define peramiters ### 
     
-    data = test()
+    data = date_reader()
     data_rows, data_cols = data.shape[:2]
 
     #### Z-score normalize ####
@@ -63,14 +92,16 @@ def main():
     mean = np.mean(data, axis=0)
     std[std == 0] = 1
     data_norm = (data - mean) / std
-    
+    ### set classes back to original 0 or 1 ### 
     data_norm[2,:] = data[2,:]
+    
     ### define the number of train and test data being used ###    
     max_data_size = max(data_rows, (data_cols-1))
      
     num_tr = (max(data_rows, (data_cols-1))) // 4
     num_test = max_data_size - (num_tr + 1)
 
+    ### initialize weights based on size of input ###
     weight_1_int = np.random.rand(3, 3)
     weight_1 = weight_1_int + np.sqrt(2)/len(weight_1_int)
     weight_1 = np.random.normal(weight_1)
@@ -81,12 +112,11 @@ def main():
 
     iterations = 100
     #eta = 1 ### would be used if we were using epocs but we are not because we willuse all the data in 1 run of training and testing ###
-    learning_rate = 0.001
-    #J = np.zeros((500, 3))
-    #error = np.zeros(num_tr)
+    learning_rate = 0.01
+    
     err = np.zeros(iterations)
     MSE = np.zeros(iterations)
-    #loss = np.zeros(num_tr)
+    loss = np.zeros(num_tr)
     outguess = np.zeros((3,num_tr))
     total_L = 0
 
@@ -96,33 +126,23 @@ def main():
         shuffled_data = np.array(data_norm[:, shuffle_seq])
         shuffled_data_location = np.array(data[:, shuffle_seq])
         
+        x = np.array([shuffled_data[0, j], shuffled_data[1, j], 1])
+        y_truth = np.array([shuffled_data[2, j], 1 - shuffled_data[2,j]])
+        
+        
         for j in range(0, num_tr):
             
-            x = np.array([shuffled_data[0, j], shuffled_data[1, j], 1])
-            d = np.array([shuffled_data[2, j], 1 - shuffled_data[2,j]])
-            
             #### Forward Propigation ####
-            z = np.dot(weight_1.T, x[:,j])
-            zeros = np.zeros(z.shape)            
-            ## Hidden layer ##
-            h = np.maximum(0, z)
-            h = np.append(h,1)
-            
-            y = np.dot(weight_2, h)
+            y_soft, h = forwardprop(weight_1, weight_2,data[:,])
 
-            ## SoftMax of output ##
-            exp_y = np.exp(y - np.max(y))
-            y_soft = exp_y / np.sum(exp_y)
-
-            outguess[:,j] = np.array([shuffled_data_location[0, j], shuffled_data_location[1, j], y_soft[0]])
             ## Cross Entropy loss ## 
-            L = -np.sum(d[:,j] * np.log(y_soft + 1e-10))
-            total_L += L
-
+            loss = -np.sum(y_truth[:,j] * np.log(y_soft + 1e-10))
+            total_L += loss
+            
             ##############################            
             #### Bacskword Propigation ####
 
-            output_error = y_soft - d[:,j]
+            output_error = y_soft - y_truth[:,j]
             weight_2_updates = np.outer(output_error, h)
             
             hidden_error = np.dot(weight_2.T, output_error) * (h > 0)
@@ -131,14 +151,14 @@ def main():
             weight_1 = weight_1 - learning_rate * weight_1_updates
             weight_2 = weight_2 - learning_rate * weight_2_updates
             
-            MSE[i] = total_L/num_tr
-            err[i] = L
+            MSE[i] = total_L/j
+            err[i] = loss
         
             # Print key variables for debugging
             if i % 100 == 0 and j == 0:
                 print(f"Iteration {i}, Sample {j}")
                 print("x:", x)
-                print("d:", d)
+                print("d:", y_truth)
                 print("z:", z)
                 print("h:", h)
                 print("y:", y)
@@ -153,7 +173,7 @@ def main():
 
         if i % 10 == 0:
             plt.figure()
-            for ii in range(1, num_tr):
+            for ii in range(1, num_tr):num_tr
                 x = [outguess[0, ii], outguess[1, ii]]
                 y = outguess[2, ii]
 

@@ -51,6 +51,20 @@ def softmax(x):
 def cross_entropy_loss(y_true, y_pred):
     return -np.sum(y_true * np.log(y_pred))
 
+def testing(W1, W2):
+ # Forward pass
+    for i in range(0,10000):
+        
+        # Input to hidden layer
+        z1 = np.dot(W1, data[:,i])
+        a1 = relu(z1)
+
+        # Hidden layer to output layer
+        z2 = np.dot(W2, a1)
+        a2 = softmax(z2)
+
+        # Compute loss
+        loss = cross_entropy_loss(y_true[:,i], a2)
 
 def main():
     # Initialize parameters
@@ -62,11 +76,12 @@ def main():
     W1 = np.random.randn(hidden_size, input_size)  # Weights for input to hidden layer
     W2 = np.random.randn(output_size, hidden_size)  # Weights for hidden to output layer
 
+   
     
     
-    
-    # Example input (2 features + 1 bias)
-    data = test()  # Last term is the bias
+    ### Trainging data ###
+    print("select trainging data")
+    data = test() 
     std = np.std(data, axis=0)
     mean = np.mean(data, axis=0)
     std[std == 0] = 1
@@ -79,7 +94,7 @@ def main():
 
     # Hyperparameters
     learning_rate = 0.01
-    epochs = 1000
+    epochs = 10
     
     plt.figure()
     for ii in range(0, 500):
@@ -97,16 +112,15 @@ def main():
         elif y[0] < 0.5:
             plt.scatter(data[0,ii], data[1,ii], c='r', linewidths=2, marker=9)
 
-    plt.title('Final Guess for Weights')
-    plt.xlabel('x1')
-    plt.ylabel('x2')
+    plt.title('Initial Guess for Weights')
+    plt.xlabel('x')
+    plt.ylabel('y')
     plt.grid()
-
     plt.show()
 
     # Training loop
     for epoch in range(epochs):
-        for i in range(0, 500):
+        for i in range(0, data.shape[1]):
             # Forward pass
             # Input to hidden layer
             z1 = np.dot(W1, x[:,i])
@@ -140,7 +154,7 @@ def main():
             W2 -= learning_rate * dW2
             
             # Print loss every 100 epochs
-        if epoch % 100 == 0:
+        if epoch % 1 == 0:
             print(f"Epoch {epoch}, Loss: {loss}")
 
     # Final predictions
@@ -150,7 +164,7 @@ def main():
 
 
     plt.figure()
-    for ii in range(0, 500):
+    for ii in range(0, data.shape[1]):
         # Forward pass
             # Input to hidden layer
         z = np.dot(W1, x[:,ii])
